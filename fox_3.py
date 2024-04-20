@@ -1,3 +1,6 @@
+"""
+Fox recognition using SVD
+"""
 import os
 import cv2
 import numpy as np
@@ -7,6 +10,7 @@ from sklearn.svm import SVC
 from sklearn.metrics import classification_report
 from sklearn.utils import shuffle
 from sklearn.cluster import KMeans
+
 
 def load_images_and_labels(base_dir, shuffle_data=False):
     """
@@ -87,14 +91,14 @@ def train_kmeans(descriptors_list, n_clusters=250):
 
 
 def create_histograms(descriptors_list, kmeans):
-    """_summary_
+    """function for creating histograms
 
     Args:
-        descriptors_list (_type_): _description_
-        kmeans (_type_): _description_
+        descriptors_list (list): list of descriptors
+        kmeans (list): list of normalized feature vectors
 
     Returns:
-        _type_: _description_
+        np.array: list of normalized feature vectors
     """
     histograms = []
     for descriptors in descriptors_list:
@@ -111,11 +115,8 @@ def main():
     """
     main function
     """
-    test_dir = './test'
-    train_dir = './train'
-
-    train_images, train_labels = load_images_and_labels(train_dir,  shuffle_data=True)
-    test_images, test_labels = load_images_and_labels(test_dir, shuffle_data=True)
+    train_images, train_labels = load_images_and_labels('./test',  shuffle_data=True)
+    test_images, test_labels = load_images_and_labels('./train', shuffle_data=True)
 
     train_descriptors = extract_sift_descriptors(train_images)
     test_descriptors = extract_sift_descriptors(test_images)

@@ -8,9 +8,25 @@ from sklearn.metrics import classification_report
 from sklearn.utils import shuffle
 from sklearn.cluster import KMeans
 
-def load_images_and_labels(base_dir, categories, shuffle_data=False):
+def load_images_and_labels(base_dir, shuffle_data=False):
+    """
+    Load images and categorise it into np array with corresponding label array,
+    Resize images to 128x128
+    Suffle the array if specified as shuffle_data=True
+
+    Args:
+        base_dir (str): path to directory
+        shuffle_data (bool, optional): flag if shuffling the array is needed. Defaults to False.
+
+    Returns:
+        np.array, np.array: first array is for images, second for labels
+    """
     images = []
-    labels = []  # 1 for 'fox', 0 for 'not_fox'
+    labels = []
+    categories = {
+            0: 'not_fox',
+            1: 'fox'
+    }
     for label, category in categories.items():
         dir_path = os.path.join(base_dir, category)
         for filename in os.listdir(dir_path):
@@ -20,7 +36,7 @@ def load_images_and_labels(base_dir, categories, shuffle_data=False):
                 img = cv2.resize(img, (128, 128))
                 images.append(img)
                 labels.append(label)
-    
+
     images = np.array(images)
     labels = np.array(labels)
 
@@ -29,7 +45,19 @@ def load_images_and_labels(base_dir, categories, shuffle_data=False):
 
     return images, labels
 
+
 def extract_sift_descriptors(images):
+    """
+    In this function we extract key descriptors using SIFT algorithm
+    Each image produces different number of keypoints and descriptors
+
+    Args:
+        images (np.array): np.array of images
+
+    Returns:
+        list[]: list of descriptors, concatenated vectors of descriptors
+        Each descriptor is a 128-element vector
+    """
     sift = cv2.SIFT_create()
     descriptors_list = []
     for img in images:
@@ -38,16 +66,36 @@ def extract_sift_descriptors(images):
         if descriptors is not None:
             descriptors_list.append(descriptors)
         else:
-            descriptors_list.append(np.zeros((0, 128)))  # Append an empty array for images with no descriptors
+            descriptors_list.append(np.zeros((0, 128)))
     return descriptors_list
 
-def train_kmeans(descriptors_list, n_clusters=500):
+
+def train_kmeans(descriptors_list, n_clusters=250):
+    """This function transforms all the feature vectors to have the same length
+
+    Args:
+        descriptors_list (list): list of descriptors
+        n_clusters (int, optional): The number of clusters. Defaults to 250.
+
+    Returns:
+        list: list of normalized feature vectors
+    """
     all_descriptors = np.vstack([desc for desc in descriptors_list if desc.size > 0])
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     kmeans.fit(all_descriptors)
     return kmeans
 
+
 def create_histograms(descriptors_list, kmeans):
+    """_summary_
+
+    Args:
+        descriptors_list (_type_): _description_
+        kmeans (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
     histograms = []
     for descriptors in descriptors_list:
         if descriptors.size > 0:
@@ -58,40 +106,44 @@ def create_histograms(descriptors_list, kmeans):
         histograms.append(hist)
     return np.array(histograms)
 
-# Paths to your dataset
-test_dir = './test'
-train_dir = './train'
-categories = {0: 'not_fox', 1: 'fox'}
 
-# Load images and labels
-train_images, train_labels = load_images_and_labels(train_dir, categories,  shuffle_data=True)
-test_images, test_labels = load_images_and_labels(test_dir, categories, shuffle_data=True)
+def main():
+    """
+    main function
+    """
+    test_dir = './test'
+    train_dir = './train'
 
-# Extract SIFT descriptors
-train_descriptors = extract_sift_descriptors(train_images)
-test_descriptors = extract_sift_descriptors(test_images)
+    train_images, train_labels = load_images_and_labels(train_dir,  shuffle_data=True)
+    test_images, test_labels = load_images_and_labels(test_dir, shuffle_data=True)
 
-# Train k-means to get visual words
-kmeans = train_kmeans(train_descriptors)
+    train_descriptors = extract_sift_descriptors(train_images)
+    test_descriptors = extract_sift_descriptors(test_images)
 
-# Create histograms of visual words
-train_features = create_histograms(train_descriptors, kmeans)
-test_features = create_histograms(test_descriptors, kmeans)
+    # Train k-means to get visual words
+    kmeans = train_kmeans(train_descriptors)
 
-# Feature Scaling
-scaler = StandardScaler()
-train_features_scaled = scaler.fit_transform(train_features)
-test_features_scaled = scaler.transform(test_features)
+    # Create histograms of visual words
+    train_features = create_histograms(train_descriptors, kmeans)
+    test_features = create_histograms(test_descriptors, kmeans)
 
-# Dimensionality Reduction with Truncated SVD
-svd = TruncatedSVD(n_components=50, random_state=42)  # You can adjust n_components based on your specific dataset and needs
-train_features_reduced = svd.fit_transform(train_features_scaled)
-test_features_reduced = svd.transform(test_features_scaled)
+    # Feature Scaling
+    scaler = StandardScaler()
+    train_features_scaled = scaler.fit_transform(train_features)
+    test_features_scaled = scaler.transform(test_features)
 
-# Classifier Training
-classifier = SVC(kernel='rbf', gamma='scale')
-classifier.fit(train_features_reduced, train_labels)
-predictions = classifier.predict(test_features_reduced)
+    # Dimensionality Reduction with Truncated SVD
+    svd = TruncatedSVD(n_components=20, random_state=42)  # You can adjust n_components based on your specific dataset and needs
+    train_features_reduced = svd.fit_transform(train_features_scaled)
+    test_features_reduced = svd.transform(test_features_scaled)
 
-# Classification Report
-print(classification_report(test_labels, predictions))
+    # Classifier Training
+    classifier = SVC(kernel='rbf', gamma='scale')
+    classifier.fit(train_features_reduced, train_labels)
+    predictions = classifier.predict(test_features_reduced)
+
+    # Classification Report
+    print(classification_report(test_labels, predictions))
+
+if __name__ == "__main__":
+    main()

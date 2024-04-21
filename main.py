@@ -121,29 +121,23 @@ def main():
     train_descriptors = extract_sift_descriptors(train_images)
     test_descriptors = extract_sift_descriptors(test_images)
 
-    # Train k-means to get visual words
     kmeans = train_kmeans(train_descriptors)
 
-    # Create histograms of visual words
     train_features = create_histograms(train_descriptors, kmeans)
     test_features = create_histograms(test_descriptors, kmeans)
 
-    # Feature Scaling
     scaler = StandardScaler()
     train_features_scaled = scaler.fit_transform(train_features)
     test_features_scaled = scaler.transform(test_features)
 
-    # Dimensionality Reduction with Truncated SVD
-    svd = TruncatedSVD(n_components=20, random_state=42)  # You can adjust n_components based on your specific dataset and needs
+    svd = TruncatedSVD(n_components=20, random_state=42)
     train_features_reduced = svd.fit_transform(train_features_scaled)
     test_features_reduced = svd.transform(test_features_scaled)
 
-    # Classifier Training
     classifier = SVC(kernel='rbf', gamma='scale')
     classifier.fit(train_features_reduced, train_labels)
     predictions = classifier.predict(test_features_reduced)
 
-    # Classification Report
     print(classification_report(test_labels, predictions))
 
 if __name__ == "__main__":

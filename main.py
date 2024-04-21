@@ -144,7 +144,7 @@ def main():
     predictions = classifier.predict(test_features_reduced)
 
     # Classification Report
-    print(classification_report(test_labels, predictions, target_names=["0-Not Fox", "1-Fox    "]))
+    print(classification_report(test_labels, predictions))
 
 if __name__ == "__main__":
     main()

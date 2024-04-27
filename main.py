@@ -1,5 +1,5 @@
 """
-Fox recognition using SVD
+Fox recognition using SIFT and SVD
 """
 import os
 import cv2
